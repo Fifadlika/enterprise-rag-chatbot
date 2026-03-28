@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from openai import OpenAI
-from config import config
+from src.config import config
 from src.utils.logger import get_logger
 
 logger = get_logger("test.openai")

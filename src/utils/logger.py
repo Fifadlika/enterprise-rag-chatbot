@@ -1,6 +1,6 @@
 import logging
 import sys
-from config import config
+from src.config import config
 
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)

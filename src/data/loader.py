@@ -1,8 +1,8 @@
 import os
 import sys
+from src.config import config
 from pathlib import Path
 from typing import List
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 """
 Document Loader: membaca berbagai format file dan mengubahnya jadi teks.
@@ -24,7 +24,6 @@ from langchain_community.document_loaders import (
 )
 from langchain.schema import Document
 
-from config import config
 from src.utils.logger import get_logger
 
 logger = get_logger("src.data.loader")

@@ -11,13 +11,13 @@ class Config:
     
     # __file__ = lokasi file config.py ini
     # os.path.dirname = ambil folder-nya
-    BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DATA_RAW_DIR: str = os.path.join(BASE_DIR, "data", "raw")
     DATA_PROCESSED_DIR: str = os.path.join(BASE_DIR, "data", "processed")
     
     def validate(self):
         if not self.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY hasn't been set in .env!")
-        print("✅ All configs valid.")
+        print("All configs are valid.")
 
 config = Config()
