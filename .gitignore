@@ -8,6 +8,7 @@ __pycache__/
 # Data (dokumen perusahaan tidak boleh masuk repo)
 data/raw/
 data/processed/
+src/data/chroma/
 
 # IDE
 .vscode/
