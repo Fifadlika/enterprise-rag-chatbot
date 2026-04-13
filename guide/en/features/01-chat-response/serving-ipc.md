@@ -2,6 +2,8 @@
 
 [en](#) · [id](../../../id/features/01-chat-response/serving-ipc.md)
 
+[up](./01-chat-response.md#1-ipc-server)
+
 ## Project Summary
 
 The enterprise RAG chatbot receives queries from the backend via IPC, processes them using an LLM + vector database, and returns answers via IPC as well.
@@ -124,3 +126,7 @@ src/
 * [ ] Run `start_server()` in one terminal
 * [ ] Send a dummy request from a `Backend Emulator` or a simple client script in another terminal
 * [ ] Ensure the response is received correctly
+
+---
+
+<span style="color: gray;">← Prev</span> | [Next →](./rag-pipeline.md)

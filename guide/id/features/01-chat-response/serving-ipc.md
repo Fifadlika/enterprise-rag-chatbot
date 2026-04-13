@@ -2,6 +2,8 @@
 
 [en](../../../en/features/01-chat-response/serving-ipc.md) · [id](#)
 
+[up](./01-chat-response.md#1-ipc-server)
+
 ## Ringkasan Proyek
 
 RAG chatbot enterprise menerima query dari backend via IPC, memproses dengan LLM + vector DB, dan mengembalikan jawaban via IPC juga.
@@ -124,3 +126,7 @@ src/
 - [ ] Jalankan `start_server()` di satu terminal
 - [ ] Kirim request dummy dari `Backend Emulator` atau script client sederhana buatan sendiri di terminal lain
 - [ ] Pastikan response diterima dengan benar
+
+---
+
+<span style="color: gray;">← Prev</span> | [Next →](./rag-pipeline.md)

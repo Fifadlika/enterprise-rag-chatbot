@@ -1,10 +1,8 @@
-The user just wants a translation of the markdown document — no file creation needed for a translation task. I'll translate it directly in chat.
-
----
-
 # RAG Pipeline
 
 [en](#) · [id](../../../id/features/01-chat-response/rag-pipeline.md)
+
+[up](./01-chat-response.md#2-rag-pipeline)
 
 ## Project Summary
 
@@ -236,3 +234,7 @@ LLM_MAX_TOKENS: int = 1024
 LLM_TIMEOUT: int = 30
 RETRIEVAL_K: int = 5
 ```
+
+---
+
+[← Prev](./serving-ipc.md) | <span style="color: gray;">Next →</span>

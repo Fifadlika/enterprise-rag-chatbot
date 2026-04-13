@@ -2,6 +2,8 @@
 
 [en](../../../en/features/01-chat-response/rag-pipeline.md) · [id](#)
 
+[up](./01-chat-response.md#2-rag-pipeline)
+
 ## Ringkasan Proyek
 
 RAG chatbot enterprise menerima query dari IPC handler, mengambil konteks relevan dari vector DB, lalu menghasilkan jawaban via LLM.
@@ -240,3 +242,7 @@ LLM_MAX_TOKENS: int = 1024
 LLM_TIMEOUT: int = 30
 RETRIEVAL_K: int = 5
 ```
+
+---
+
+[← Prev](./serving-ipc.md) | <span style="color: gray;">Next →</span>

@@ -24,3 +24,27 @@ RAG-based chatbot for enterprise needs, built with LangChain and Vector Database
 - **Chat Response** — User query → retrieve context → LLM answer.
 - **Add Knowledge Base** — Upload document → embedding → store to vector DB.
 - **Delete Knowledge Base** — Remove document and vectors from vector DB.
+
+---
+
+## Implementation Order
+
+Recommended implementation sequence below.
+
+1. **Chat Response**
+
+   User query → retrieve context → LLM answer.
+
+   Documentation: [Chat Response Feature Development Guide](./features/01-chat-response/01-chat-response.md)
+
+2. **Add Knowledge Base**
+
+   Upload document → chunking → embedding → store in vector DB.
+
+   Documentation: *Not created yet*
+
+3. **Delete Knowledge Base**
+
+   Delete document and vectors from vector DB.
+
+   Documentation: *Not created yet*
