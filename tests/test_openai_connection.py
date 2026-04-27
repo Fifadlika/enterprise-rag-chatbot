@@ -18,8 +18,7 @@ def test_openai_connection():
         
         logger.info(f"Connected successfully! {len(list(models))} models are available.")
         logger.info("OpenAI API ready to use.")
-        return True
-        
+
     except Exception as e:
         logger.error(f"Connection failed: {e}")
         return False
