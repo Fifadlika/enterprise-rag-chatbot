@@ -88,7 +88,6 @@ def index_documents(chunks: List[Document], reset: bool = False) -> Chroma:
 
     vector_store = get_vector_store(reset=reset)
 
-    # Check how many documents are already indexed
     existing_count = get_collection_count(vector_store)
     logger.info(f"Existing documents in store: {existing_count}")
 
