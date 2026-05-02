@@ -73,36 +73,56 @@ def get_collection_count(vector_store: Chroma) -> int:
     return int(vector_store._collection.count())
 
 
-def index_documents(chunks: List[Document], reset: bool = False) -> Chroma:
+def index_documents(
+    chunks: List[Document],
+    reset: bool = False,
+    doc_id: str | None = None,
+) -> Chroma:
     """
     Embed all chunks and store them in the Chroma vector store.
 
     Args:
-        chunks: List of Document chunks from the chunking pipeline
-        reset : Whether to wipe and re-index from scratch
+        chunks: List of Document chunks from the chunking pipeline.
+        reset:  Whether to wipe and re-index from scratch.
+        doc_id: When provided, stamped onto every chunk's metadata so
+                vectors can be filtered and deleted per document.
+                Also bypasses the existing-count guard — the API path
+                always adds incrementally to a live, non-empty store.
 
     Returns:
-        Populated Chroma vector store
+        Populated Chroma vector store.
     """
-    logger.info(f"Starting indexing for {len(chunks)} chunks...")
+    logger.info(f"Starting indexing for {len(chunks)} chunks (doc_id={doc_id!r})...")
 
     vector_store = get_vector_store(reset=reset)
 
     existing_count = get_collection_count(vector_store)
     logger.info(f"Existing documents in store: {existing_count}")
 
-    if existing_count > 0 and not reset:
+    # Offline bulk-index guard: skip if the store is already populated and
+    # the caller did not request a reset.  Not applied on the API path
+    # (doc_id provided) because the store will always be non-empty after
+    # the first document is indexed.
+    if doc_id is None and existing_count > 0 and not reset:
         logger.warning(
             "Vector store already contains documents. "
             "Use reset=True to re-index. Skipping indexing."
         )
         return vector_store
 
-    # LangChain handles batching automatically
-    # It will call OpenAI API in batches to avoid rate limits
-    logger.info("Sending chunks to OpenAI Embeddings API...")
-    logger.info("(This may take 30-60 seconds for ~263 chunks)")
+    # Stamp doc_id onto every chunk so vectors can be filtered/deleted later.
+    # Work on copies to avoid mutating the caller's list.
+    if doc_id is not None:
+        chunks = [
+            Document(
+                page_content=chunk.page_content,
+                metadata={**chunk.metadata, "doc_id": doc_id},
+            )
+            for chunk in chunks
+        ]
+        logger.info(f"Stamped doc_id={doc_id!r} onto {len(chunks)} chunks.")
 
+    logger.info("Sending chunks to OpenAI Embeddings API...")
     vector_store.add_documents(chunks)
 
     final_count = get_collection_count(vector_store)
