@@ -5,7 +5,18 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Data (dokumen perusahaan tidak boleh masuk repo)
+# Build artifacts
+*.egg-info/
+*.egg
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Data 
 data/raw/
 data/processed/
 src/data/chroma/

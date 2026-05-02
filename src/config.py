@@ -34,6 +34,18 @@ class Config:
     def validate(self):
         if not self.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY hasn't been set in .env!")
+
+        data_dir = self._BASE_PATH / "data"
+        assert Path(self.DATA_RAW_DIR).parent == data_dir, (
+            f"DATA_RAW_DIR parent mismatch: {Path(self.DATA_RAW_DIR).parent}"
+        )
+        assert Path(self.DATA_PROCESSED_DIR).parent == data_dir, (
+            f"DATA_PROCESSED_DIR parent mismatch: {Path(self.DATA_PROCESSED_DIR).parent}"
+        )
+        assert Path(self.CHROMA_PERSIST_DIR).parent == data_dir, (
+            f"CHROMA_PERSIST_DIR parent mismatch: {Path(self.CHROMA_PERSIST_DIR).parent}"
+        )
+
         print("All configs are valid.")
 
 config = Config()
