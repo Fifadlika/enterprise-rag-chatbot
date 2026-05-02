@@ -1,12 +1,13 @@
 # tests/test_api_knowledge_base.py
 """
-Unit tests for POST /knowledge-base.
+Unit tests for POST /knowledge-base and DELETE /knowledge-base/{doc_id}.
 
 All external calls (loader, chunker, indexer, Chroma) are mocked.
 No OPENAI_API_KEY required.
 """
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 from langchain.schema import Document
 
@@ -26,7 +27,7 @@ MOCK_CHUNKS = [
 ]
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _no_conflict_collection():
     """Chroma collection mock that reports doc_id as absent."""
@@ -48,7 +49,7 @@ def _mock_vector_store(collection_mock):
     return vs
 
 
-# ── 400: file not found ───────────────────────────────────────────────────────
+# ── POST /knowledge-base ──────────────────────────────────────────────────────
 
 def test_post_kb_file_not_found():
     with patch("src.api.routes.knowledge_base.Path") as MockPath:
@@ -58,10 +59,8 @@ def test_post_kb_file_not_found():
         resp = client.post("/knowledge-base", json=VALID_PAYLOAD)
 
     assert resp.status_code == 400
-    assert "FILE_NOT_FOUND" in resp.headers.get("x-error-code", "")
+    assert resp.json()["error_code"] == "FILE_NOT_FOUND"
 
-
-# ── 400: unsupported file type ────────────────────────────────────────────────
 
 def test_post_kb_unsupported_file_type():
     with patch("src.api.routes.knowledge_base.Path") as MockPath, \
@@ -73,10 +72,8 @@ def test_post_kb_unsupported_file_type():
         resp = client.post("/knowledge-base", json=VALID_PAYLOAD)
 
     assert resp.status_code == 400
-    assert "UNSUPPORTED_FILE_TYPE" in resp.headers.get("x-error-code", "")
+    assert resp.json()["error_code"] == "UNSUPPORTED_FILE_TYPE"
 
-
-# ── 409: doc_id already indexed ───────────────────────────────────────────────
 
 def test_post_kb_doc_id_conflict():
     mock_vs = _mock_vector_store(_conflict_collection())
@@ -93,10 +90,8 @@ def test_post_kb_doc_id_conflict():
         resp = client.post("/knowledge-base", json=VALID_PAYLOAD)
 
     assert resp.status_code == 409
-    assert "DOC_ID_CONFLICT" in resp.headers.get("x-error-code", "")
+    assert resp.json()["error_code"] == "DOC_ID_CONFLICT"
 
-
-# ── 500: unexpected indexing failure ─────────────────────────────────────────
 
 def test_post_kb_indexing_failure():
     mock_vs = _mock_vector_store(_no_conflict_collection())
@@ -117,10 +112,8 @@ def test_post_kb_indexing_failure():
         resp = client.post("/knowledge-base", json=VALID_PAYLOAD)
 
     assert resp.status_code == 500
-    assert "INDEXING_FAILED" in resp.headers.get("x-error-code", "")
+    assert resp.json()["error_code"] == "INDEXING_FAILED"
 
-
-# ── 200: happy path ───────────────────────────────────────────────────────────
 
 def test_post_kb_success():
     mock_vs = _mock_vector_store(_no_conflict_collection())
@@ -146,3 +139,65 @@ def test_post_kb_success():
     assert body["file_name"] == VALID_PAYLOAD["file_name"]
     assert body["chunks_indexed"] == len(MOCK_CHUNKS)
     assert body["status"] == "indexed"
+
+
+# ── DELETE /knowledge-base/{doc_id} ──────────────────────────────────────────
+
+def test_delete_kb_not_found():
+    """404 when no vectors exist for the given doc_id."""
+    mock_vs = _mock_vector_store(_no_conflict_collection())
+
+    with patch("src.api.routes.knowledge_base.get_vector_store",
+               return_value=mock_vs):
+        resp = client.delete("/knowledge-base/doc-uuid-missing")
+
+    assert resp.status_code == 404
+    assert resp.json()["error_code"] == "DOC_NOT_FOUND"
+
+
+def test_delete_kb_query_failure():
+    """500 when Chroma raises during the initial ID fetch."""
+    mock_vs = MagicMock()
+    mock_vs._collection.get.side_effect = Exception("Chroma unavailable")
+
+    with patch("src.api.routes.knowledge_base.get_vector_store",
+               return_value=mock_vs):
+        resp = client.delete("/knowledge-base/doc-uuid-001")
+
+    assert resp.status_code == 500
+    assert resp.json()["error_code"] == "DELETION_FAILED"
+
+
+def test_delete_kb_deletion_failure():
+    """500 when Chroma raises during the actual delete call."""
+    mock_col = MagicMock()
+    mock_col.get.return_value = {"ids": ["vec-1", "vec-2"]}
+    mock_col.delete.side_effect = Exception("Write failed")
+    mock_vs = _mock_vector_store(mock_col)
+
+    with patch("src.api.routes.knowledge_base.get_vector_store",
+               return_value=mock_vs):
+        resp = client.delete("/knowledge-base/doc-uuid-001")
+
+    assert resp.status_code == 500
+    assert resp.json()["error_code"] == "DELETION_FAILED"
+
+
+def test_delete_kb_success():
+    """200 with correct chunks_deleted count on happy path."""
+    mock_col = MagicMock()
+    mock_col.get.return_value = {"ids": ["vec-1", "vec-2", "vec-3"]}
+    mock_col.delete.return_value = None
+    mock_vs = _mock_vector_store(mock_col)
+
+    with patch("src.api.routes.knowledge_base.get_vector_store",
+               return_value=mock_vs):
+        resp = client.delete("/knowledge-base/doc-uuid-001")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["doc_id"] == "doc-uuid-001"
+    assert body["chunks_deleted"] == 3
+    assert body["status"] == "deleted"
+
+    mock_col.delete.assert_called_once_with(ids=["vec-1", "vec-2", "vec-3"])

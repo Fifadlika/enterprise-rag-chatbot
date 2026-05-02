@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from src.api.routes.chat import router as chat_router   
+from src.api.routes.chat import router as chat_router
+from src.api.routes.knowledge_base import router as kb_router      
 from src.api.routes.health import health_check
 from src.api.schemas.response import ErrorResponse, HealthResponse
 from src.config import config
@@ -62,11 +63,34 @@ async def get_health() -> HealthResponse:
     return await health_check()
 
 app.include_router(chat_router)
-
+app.include_router(kb_router)  
 
 # ---------------------------------------------------------------------------
 # Global exception handler
 # ---------------------------------------------------------------------------
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Normalize HTTPException responses to ErrorResponse shape.
+
+    Routes raise HTTPException with detail as either:
+    - str  → wrapped as { detail: str, error_code: null }
+    - dict → must contain 'detail' and 'error_code' keys
+
+    This keeps all error responses consistent for the Express consumer.
+    """
+    if isinstance(exc.detail, dict):
+        content = ErrorResponse(
+            detail=exc.detail.get("detail", str(exc.detail)),
+            error_code=exc.detail.get("error_code"),
+        ).model_dump()
+    else:
+        content = ErrorResponse(
+            detail=str(exc.detail),
+            error_code=None,
+        ).model_dump()
+
+    return JSONResponse(status_code=exc.status_code, content=content)
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request, exc: Exception):

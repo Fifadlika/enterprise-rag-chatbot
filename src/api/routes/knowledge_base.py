@@ -25,25 +25,20 @@ logger = get_logger("src.api.routes.knowledge_base")
 router = APIRouter()
 
 
-def _doc_id_exists(doc_id: str) -> tuple[bool, int]:
+def _get_doc_ids(doc_id: str) -> list[str]:
     """
-    Check whether any vectors carrying the given doc_id are already in Chroma.
+    Return all Chroma vector IDs associated with the given doc_id.
 
-    Returns:
-        (exists: bool, count: int) — count is 0 when exists is False.
+    An empty list means the doc_id is not indexed.
+    Used by both the POST (conflict check) and DELETE (fetch-then-delete) paths.
 
     Note:
-        Uses the same private _collection accessor pattern as
+        Uses the private _collection accessor, consistent with
         get_collection_count(). Flagged as Phase 3 cleanup target.
     """
     vector_store = get_vector_store()
-    result = vector_store._collection.get(
-        where={"doc_id": doc_id},
-        limit=1,
-    )
-    count = len(result.get("ids", []))
-    return count > 0, count
-
+    result = vector_store._collection.get(where={"doc_id": doc_id})
+    return result.get("ids", [])
 
 @router.post(
     "/knowledge-base",
@@ -76,34 +71,52 @@ def add_knowledge_base(request: AddKnowledgeBaseRequest) -> AddKnowledgeBaseResp
         logger.warning(f"File not found: {request.file_path!r}")
         raise HTTPException(
             status_code=400,
-            detail=f"File not found: {request.file_path}",
-            headers={"X-Error-Code": "FILE_NOT_FOUND"},
+            detail={
+                "detail": f"File not found: {request.file_path}",
+                "error_code": "FILE_NOT_FOUND",
+            },
         )
 
-    # Guard 2: load document — empty return means unsupported extension
+     # Guard 2: load document — empty return means unsupported extension
+    ext = Path(request.file_path).suffix.lower()
     documents = load_single_document(request.file_path)
     if not documents:
         logger.warning(
             f"Unsupported file type for {request.file_name!r}. "
-            f"Extension: {Path(request.file_path).suffix.lower()!r}"
+            f"Extension: {ext!r}"
         )
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Unsupported file type: {Path(request.file_path).suffix.lower()}. "
-                "Supported formats: .txt, .pdf, .docx"
-            ),
-            headers={"X-Error-Code": "UNSUPPORTED_FILE_TYPE"},
+            detail={
+                "detail": (
+                    f"Unsupported file type: {ext}. "
+                    "Supported formats: .txt, .pdf, .docx"
+                ),
+                "error_code": "UNSUPPORTED_FILE_TYPE",
+            },
         )
 
     # Guard 3: doc_id must not already be indexed
-    exists, _ = _doc_id_exists(request.doc_id)
-    if exists:
+    try:
+        existing_ids = _get_doc_ids(request.doc_id)
+    except Exception as exc:
+        logger.exception(f"Chroma query failed during conflict check: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "detail": "Unexpected failure while checking the knowledge base.",
+                "error_code": "INDEXING_FAILED",
+            },
+        )
+
+    if existing_ids:
         logger.warning(f"doc_id already indexed: {request.doc_id!r}")
         raise HTTPException(
             status_code=409,
-            detail=f"doc_id already indexed: {request.doc_id}",
-            headers={"X-Error-Code": "DOC_ID_CONFLICT"},
+            detail={
+                "detail": f"doc_id already indexed: {request.doc_id}",
+                "error_code": "DOC_ID_CONFLICT",
+            },
         )
 
     # Happy path: chunk and index
@@ -116,8 +129,10 @@ def add_knowledge_base(request: AddKnowledgeBaseRequest) -> AddKnowledgeBaseResp
         )
         raise HTTPException(
             status_code=500,
-            detail="Unexpected failure during document indexing.",
-            headers={"X-Error-Code": "INDEXING_FAILED"},
+            detail={
+                "detail": "Unexpected failure during document indexing.",
+                "error_code": "INDEXING_FAILED",
+            },
         )
 
     logger.info(
@@ -130,4 +145,73 @@ def add_knowledge_base(request: AddKnowledgeBaseRequest) -> AddKnowledgeBaseResp
         file_name=request.file_name,
         chunks_indexed=len(chunks),
         status="indexed",
+    )
+
+@router.delete(
+    "/knowledge-base/{doc_id}",
+    response_model=DeleteKnowledgeBaseResponse,
+    status_code=200,
+    summary="Remove all vectors for a document from the knowledge base",
+)
+def delete_knowledge_base(doc_id: str) -> DeleteKnowledgeBaseResponse:
+    """
+    Delete every chunk vector associated with the given doc_id.
+
+    The full ID list is fetched first so the response can report an
+    exact chunk count, then deleted in a single call.
+
+    Error codes:
+        DOC_NOT_FOUND    — no vectors found for this doc_id in Chroma
+        DELETION_FAILED  — unexpected failure during vector removal
+    """
+    logger.info(f"DELETE /knowledge-base/{doc_id!r}")
+
+    # Fetch all matching vector IDs
+    try:
+        matching_ids = _get_doc_ids(doc_id)
+    except Exception as exc:
+        logger.exception(f"Failed to query Chroma for doc_id={doc_id!r}: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "detail": "Unexpected failure while querying the knowledge base.",
+                "error_code": "DELETION_FAILED",
+            },
+        )
+
+    if not matching_ids:
+        logger.warning(f"doc_id not found in Chroma: {doc_id!r}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "detail": f"doc_id not found: {doc_id}",
+                "error_code": "DOC_NOT_FOUND",
+            },
+        )
+
+    # Delete by explicit ID list — exact count, version-safe
+    try:
+        vector_store = get_vector_store()
+        vector_store._collection.delete(ids=matching_ids)
+    except Exception as exc:
+        logger.exception(
+            f"Deletion failed for doc_id={doc_id!r} "
+            f"({len(matching_ids)} vectors): {exc}"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "detail": "Unexpected failure during vector deletion.",
+                "error_code": "DELETION_FAILED",
+            },
+        )
+
+    logger.info(
+        f"Deleted doc_id={doc_id!r} | {len(matching_ids)} vectors removed."
+    )
+
+    return DeleteKnowledgeBaseResponse(
+        doc_id=doc_id,
+        chunks_deleted=len(matching_ids),
+        status="deleted",
     )
