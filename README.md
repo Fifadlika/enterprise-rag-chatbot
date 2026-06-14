@@ -1,22 +1,48 @@
-# Enterprise RAG Chatbot
+# Enterprise RAG Chatbot — Helpson
 
-A retrieval-augmented generation (RAG) API for enterprise documents.
-Retrieves relevant document chunks from a vector store and generates
-grounded answers using OpenAI. Designed to be consumed by any HTTP
-client — including an Express.js backend.
+Built as a capstone project with PT Indonesia Epson Industry as the case 
+study client, addressing a real manufacturing helpdesk problem: technical 
+knowledge was siloed, helpdesk was flooded with repetitive questions, and 
+all issue reporting was manual — risking production stopline.
+
+**My role: AI Engineer** — owned the full RAG pipeline (retrieval, embedding, 
+generation) and FastAPI service layer.
+
+> Deployed on PT Epson Indonesia's internal intranet. A sanitized version 
+> (no internal data) is available at: [v2.epson-chatbot-demo.fiilabs.web.id]
 
 ---
 
-## Current Status
+## Demo Credentials
 
-| Metric                | Value                               |
-| --------------------- | ----------------------------------- |
-| Retrieval Precision@5 | 0.96 (target ≥ 0.60) ✅             |
-| API layer             | FastAPI — health + chat endpoints   |
-| Generation model      | gpt-4o-mini                         |
-| Embedding model       | text-embedding-3-small              |
-| Vector store          | Chroma (persisted to disk)          |
-| Python version        | 3.11.x (recommended) / 3.14.3 (dev) |
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | tester31004@fiilabs.web.id | rajamuda850 |
+| Employee | tester31002@fiilabs.web.id | rajamuda850 |
+
+---
+
+## Results
+
+| Metric | Result | Target |
+|--------|--------|--------|
+| Retrieval Precision@5 | 0.96 | ≥ 0.60 ✅ |
+| Chatbot response time | 7s | ≤ 30s ✅ |
+| FAQ search time | 1s | ≤ 10s ✅ |
+| UAT pass rate | 94.3% | 100% |
+| User satisfaction | 4.72 / 5.00 | — |
+| Security (high-risk vulnerabilities) | 0 | 0 ✅ |
+
+Validated by 12 real users (6 admin, 6 employees) at PT Indonesia Epson 
+Industry via demo, observation, interview, and satisfaction survey.
+
+| Component | Detail |
+|-----------|--------|
+| API layer | FastAPI — /health + /chat endpoints |
+| Generation model | gpt-4o-mini |
+| Embedding model | text-embedding-3-small |
+| Vector store | Chroma (persisted to disk) |
+| Python version | 3.11.x (recommended) |
 
 ---
 
@@ -326,27 +352,3 @@ Runs Precision@K against the hardcoded test query set and reports
 pass/fail against the ≥ 0.60 threshold.
 
 ---
-
-## Known Issues and Deferred Items
-
-| Item                                                            | Severity | Target  |
-| --------------------------------------------------------------- | -------- | ------- |
-| `CHROMA_PERSIST_DIR` path inconsistency with `DATA_RAW_DIR`     | Major    | Phase 2 |
-| Import strategy inconsistency in pre-Phase 0 modules            | Major    | Phase 2 |
-| No unit tests for loader, chunker, embedder, indexer, retriever | Major    | Phase 2 |
-| Evaluator uses hardcoded keyword heuristics                     | Medium   | Phase 2 |
-| No API authentication                                           | Critical | Phase 3 |
-| No containerization (Dockerfile)                                | Major    | Phase 3 |
-| No structured logging with correlation IDs                      | Medium   | Phase 2 |
-| Python 3.14.3 is pre-release — not recommended for production   | Major    | Phase 3 |
-
----
-
-## Roadmap
-
-| Phase   | Focus                                                              | Status     |
-| ------- | ------------------------------------------------------------------ | ---------- |
-| Phase 0 | Import cleanup, path normalization                                 | ✅ Done    |
-| Phase 1 | API layer, LLM generation, end-to-end pipeline                     | ✅ Done    |
-| Phase 2 | Hybrid retrieval, expanded metrics, unit tests, structured logging | 🔲 Planned |
-| Phase 3 | Auth, containerization, CI pipeline, production hardening          | 🔲 Planned |
