@@ -1,4 +1,8 @@
 # Enterprise RAG Chatbot — Helpson
+![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-F06D2B?style=for-the-badge&logo=chroma&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI_gpt--4o--mini-412991?style=for-the-badge&logo=openai&logoColor=white)
 
 Built as a capstone project with PT Indonesia Epson Industry as the case 
 study client, addressing a real manufacturing helpdesk problem: technical 
@@ -9,7 +13,7 @@ all issue reporting was manual — risking production stopline.
 generation) and FastAPI service layer.
 
 > Deployed on PT Epson Indonesia's internal intranet. A sanitized version 
-> (no internal data) is available at: [Helpson v2 Demo](v2.epson-chatbot-demo.fiilabs.web.id)
+> (no internal data) is available at: [Helpson v2 Demo](https://v2.epson-chatbot-demo.fiilabs.web.id/)
 
 ---
 
@@ -271,84 +275,3 @@ Accepts a query and returns a grounded answer with source citations.
 | 503    | Answer generation failed                           |
 | 500    | Unexpected internal error                          |
 
-**PowerShell**
-
-```powershell
-(Invoke-WebRequest `
-  -Uri http://localhost:8000/chat `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"query": "How do I replace the ink cartridge?", "k": 5}' `
-).Content | python -m json.tool
-```
-
-**curl**
-
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"query": "How do I replace the ink cartridge?", "k": 5}'
-```
-
----
-
-## Express.js Integration
-
-The FastAPI service is designed to be consumed by an Express backend.
-Express does not need to know anything about Python, LangChain, or Chroma —
-it makes a standard HTTP POST and receives a JSON response.
-
-```javascript
-// Example Express route calling the RAG service
-app.post("/api/chat", async (req, res) => {
-  const { query, k = 5 } = req.body;
-
-  const ragResponse = await fetch("http://localhost:8000/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, k }),
-  });
-
-  if (!ragResponse.ok) {
-    const error = await ragResponse.json();
-    return res.status(ragResponse.status).json(error);
-  }
-
-  const data = await ragResponse.json();
-  res.json(data);
-});
-```
-
-In production, replace `http://localhost:8000` with the internal
-service address of the FastAPI container.
-
----
-
-## Running Tests
-
-```bash
-# Full test suite
-pytest tests/ -v
-
-# With coverage report
-pytest tests/ --cov=src --cov-report=term-missing
-
-# Single test file
-pytest tests/test_e2e_rag_pipeline.py -v
-```
-
-No `OPENAI_API_KEY` is required to run the test suite.
-All external calls are mocked.
-
----
-
-## Retrieval Evaluation
-
-```bash
-python src/retrieval/evaluator.py
-```
-
-Runs Precision@K against the hardcoded test query set and reports
-pass/fail against the ≥ 0.60 threshold.
-
----
