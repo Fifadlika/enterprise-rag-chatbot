@@ -9,7 +9,7 @@ all issue reporting was manual — risking production stopline.
 generation) and FastAPI service layer.
 
 > Deployed on PT Epson Indonesia's internal intranet. A sanitized version 
-> (no internal data) is available at: [v2.epson-chatbot-demo.fiilabs.web.id]
+> (no internal data) is available at: [Helpson v2 Demo](v2.epson-chatbot-demo.fiilabs.web.id)
 
 ---
 
